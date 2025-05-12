@@ -1,0 +1,47 @@
+syntax = "proto3";
+package pubster;
+
+
+service PubSub {
+  rpc publish (publish_message_request) returns (publish_message_response);
+  rpc subscribe (subscribe_topic_request) returns (subscribe_topic_response);
+  rpc unsubscribe (unsubscribe_topic_request) returns (unsubscribe_topic_response);
+}
+
+message publish_message_request {
+  Message message = 1;
+  Topic topic = 2;
+}
+
+message publish_message_response {
+  string ack = 1;
+}
+
+message subscribe_topic_request {
+  Topic topic = 1;
+  int32 client_id = 2:
+}
+
+message subscribe_topic_response {
+  string ack = 1;
+
+}
+
+message unsubscribe_topic_request {
+  Topic topic = 1;
+  int32 client_id = 2:
+
+}
+
+message unsubscribe_topic_response {
+  string ack = 1;
+}
+
+message Message {
+  string message = 1;
+  Topic topic = 2;
+}
+
+message Topic {
+  string topic_name = 1;
+}
