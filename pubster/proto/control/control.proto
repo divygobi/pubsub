@@ -19,18 +19,16 @@ message publish_message_response {
 
 message subscribe_topic_request {
   Topic topic = 1;
-  int32 client_id = 2:
+  int32 client_id = 2;
 }
 
 message subscribe_topic_response {
   string ack = 1;
-
 }
 
 message unsubscribe_topic_request {
   Topic topic = 1;
-  int32 client_id = 2:
-
+  int32 client_id = 2;
 }
 
 message unsubscribe_topic_response {
