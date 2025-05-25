@@ -1,3 +1,4 @@
+use tokio::sync::broadcast;
 use tonic::client;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -13,7 +14,10 @@ pub mod server {
 
 #[derive(Debug, Default)]
 pub struct Broker {
+    //TODO implement ring buffer for avialable client ids.
+    next_available_client_id: i32 = 0,
     subscribers: std::collections::HashMap<String, std::collections::HashSet<i32>>,
+    
 }
 
 #[tonic::async_trait]
@@ -68,6 +72,11 @@ impl PubSub for Broker{
         };
 
         Ok(Response::new(res))
+    }
+
+    async fn get_id(&self) -> Result<i32> {
+        self.next_available_client_id += 1;
+        return Ok(self.next_available_client_id);
     }
 }
 

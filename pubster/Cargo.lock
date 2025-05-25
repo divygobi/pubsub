@@ -614,7 +614,9 @@ dependencies = [
 name = "pubster"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "prost",
+ "prost-derive",
  "tokio",
  "tokio-test",
  "tonic",

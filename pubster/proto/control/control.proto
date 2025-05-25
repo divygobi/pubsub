@@ -6,11 +6,13 @@ service PubSub {
   rpc publish (publish_message_request) returns (publish_message_response);
   rpc subscribe (subscribe_topic_request) returns (subscribe_topic_response);
   rpc unsubscribe (unsubscribe_topic_request) returns (unsubscribe_topic_response);
+  rpc get_id (client_id_request) returns (client_id_response);
 }
 
 message publish_message_request {
   Message message = 1;
   Topic topic = 2;
+  int32 client_id = 3;
 }
 
 message publish_message_response {
@@ -33,6 +35,14 @@ message unsubscribe_topic_request {
 
 message unsubscribe_topic_response {
   string ack = 1;
+}
+
+message client_id_request { 
+  string hello = 1;
+}
+
+message client_id_response { 
+  int32 client_id = 1;
 }
 
 message Message {
