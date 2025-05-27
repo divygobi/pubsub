@@ -1,4 +1,6 @@
 use tokio::sync::broadcast;
+use tokio::sync::Mutex;
+
 use tonic::client;
 use tonic::{transport::Server, Request, Response, Status};
 
@@ -6,7 +8,8 @@ use server::pub_sub_server::{PubSub, PubSubServer};
 
 use server::{SubscribeTopicResponse, SubscribeTopicRequest, 
     UnsubscribeTopicResponse, UnsubscribeTopicRequest, 
-    PublishMessageResponse, PublishMessageRequest};
+    PublishMessageResponse, PublishMessageRequest,
+    ClientIdResponse, ClientIdRequest};
 
 pub mod server {
     tonic::include_proto!("pubster"); // The string specified here must match the proto package name
@@ -15,7 +18,7 @@ pub mod server {
 #[derive(Debug, Default)]
 pub struct Broker {
     //TODO implement ring buffer for avialable client ids.
-    next_available_client_id: i32 = 0,
+    next_available_client_id: Mutex<i32>,
     subscribers: std::collections::HashMap<String, std::collections::HashSet<i32>>,
     
 }
@@ -34,6 +37,8 @@ impl PubSub for Broker{
         Ok(Response::new(res))
     }
 
+    //TODO Write this such that if the client is already subscribed, give some sort of Error
+    //TODO This needs to return a stream 
     async fn subscribe(&self, request: Request<SubscribeTopicRequest>) 
     -> Result<Response<SubscribeTopicResponse>, Status>{
         println!("Got a subscribe request: {:?}", request);
@@ -74,9 +79,19 @@ impl PubSub for Broker{
         Ok(Response::new(res))
     }
 
-    async fn get_id(&self) -> Result<i32> {
-        self.next_available_client_id += 1;
-        return Ok(self.next_available_client_id);
+    async fn get_client_id(&self, request: Request<ClientIdRequest>) -> Result<Response<ClientIdResponse>, Status> {
+
+
+        let mut guard = self.next_available_client_id.lock().await;
+        *guard += 1;
+
+
+        let res = Response::new(ClientIdResponse{
+            client_id: *guard,
+        });
+
+
+        return Ok(res);
     }
 }
 
