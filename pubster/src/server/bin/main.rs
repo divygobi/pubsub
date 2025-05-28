@@ -1,3 +1,5 @@
+use tokio::sync::RwLock;
+
 use tokio::sync::broadcast;
 use tokio::sync::Mutex;
 
@@ -15,11 +17,17 @@ pub mod server {
     tonic::include_proto!("pubster"); // The string specified here must match the proto package name
 }
 
+// pub struct Client {
+//     client_id: i32
+
+// }
+
 #[derive(Debug, Default)]
 pub struct Broker {
     //TODO implement ring buffer for avialable client ids.
     next_available_client_id: Mutex<i32>,
-    subscribers: std::collections::HashMap<String, std::collections::HashSet<i32>>,
+    next_available_message_id: Mutex<i32>,
+    subscribers: RwLock<std::collections::HashMap<String, std::collections::HashSet<i32>>>,
     
 }
 
@@ -29,10 +37,12 @@ impl PubSub for Broker{
     async fn publish(&self, request: Request<PublishMessageRequest>) 
     -> Result<Response<PublishMessageResponse>, Status>{
         println!("Got a publish request: {:?}", &request);
-
+        
         let res = PublishMessageResponse {
             ack: format!("Hello goon your message for topic {} has been recieved", request.into_inner().topic.unwrap().topic_name),
         };
+
+        
 
         Ok(Response::new(res))
     }
@@ -47,12 +57,12 @@ impl PubSub for Broker{
         let client_id: i32 = sub_request.client_id;
         let topic_name: String = sub_request.topic.unwrap().topic_name;
 
-        // if !self.subscribers.contains_key(&topic_name){
-        //     self.subscribers.insert(topic_name.to_string(), std::collections::HashSet::new());
-        // }
-
-        // self.subscribers.get_mut(&topic_name).unwrap().insert(client_id);
-
+        let mut subscribers_guard = self.subscribers.write().await;
+        subscribers_guard
+            .entry(topic_name.clone())
+            .or_default()            // inserts a new HashSet if none exists
+            .insert(client_id);      // then inserts the client into it
+ 
         let res = SubscribeTopicResponse {
             ack: format!("Hello client your subscription for topic {} has been recieved", topic_name),
         };
@@ -68,10 +78,11 @@ impl PubSub for Broker{
         let client_id: i32 = unsub_request.client_id;
         let topic_name: String = unsub_request.topic.unwrap().topic_name;
 
-        // if self.subscribers.contains_key(&topic_name){
-        //     self.subscribers.get_mut(&topic_name).unwrap().remove(&client_id);
-        // }
-        
+        let mut subscribers_guard = self.subscribers.write().await;
+        if let Some(set) = subscribers_guard.get_mut(&topic_name) {
+            set.remove(&client_id);
+        } 
+
         let res = UnsubscribeTopicResponse{
             ack: format!("Hello goon your unsubscription for topic {} has been recieved", topic_name),
         };

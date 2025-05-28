@@ -7,7 +7,7 @@ service PubSub {
   rpc subscribe (subscribe_topic_request) returns (subscribe_topic_response);
   rpc unsubscribe (unsubscribe_topic_request) returns (unsubscribe_topic_response);
   rpc get_client_id (client_id_request) returns (client_id_response);
-  // rpc get_topics (get_topics_)
+  // rpc get_topics (get_topics_r)
 }
 
 message publish_message_request {
