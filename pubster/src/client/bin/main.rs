@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "4" => {
                 // Exit
                 println!("Exiting...");
-                break;
+                break ;
             },
             _ => {
                 println!("Invalid option, please try again.");

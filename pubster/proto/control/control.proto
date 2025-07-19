@@ -4,7 +4,7 @@ package pubster;
 
 service PubSub {
   rpc publish (publish_message_request) returns (publish_message_response);
-  rpc subscribe (subscribe_topic_request) returns (subscribe_topic_response);
+  rpc subscribe (subscribe_topic_request) returns (stream subscribe_message);
   rpc unsubscribe (unsubscribe_topic_request) returns (unsubscribe_topic_response);
   rpc get_client_id (client_id_request) returns (client_id_response);
   // rpc get_topics (get_topics_r)
@@ -13,7 +13,7 @@ service PubSub {
 message publish_message_request {
   Message message = 1;
   Topic topic = 2;
-  int32 client_id = 3;
+  uint32 client_id = 3;
 }
 
 message publish_message_response {
@@ -22,7 +22,7 @@ message publish_message_response {
 
 message subscribe_topic_request {
   Topic topic = 1;
-  int32 client_id = 2;
+  uint32 client_id = 2;
 }
 
 message subscribe_topic_response {
@@ -31,7 +31,7 @@ message subscribe_topic_response {
 
 message unsubscribe_topic_request {
   Topic topic = 1;
-  int32 client_id = 2;
+  uint32 client_id = 2;
 }
 
 message unsubscribe_topic_response {
@@ -43,7 +43,15 @@ message client_id_request {
 }
 
 message client_id_response { 
-  int32 client_id = 1;
+  uint32 client_id = 1;
+}
+
+message subscribe_message {
+  uint32 message_id = 1;
+  string message = 2;
+  uint32 publish_client_id = 3;
+  Topic topic = 4;
+  optional string ack = 5;  
 }
 
 message Message {
