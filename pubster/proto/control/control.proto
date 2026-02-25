@@ -1,64 +1,62 @@
 syntax = "proto3";
 package pubster;
 
-
 service PubSub {
-  rpc publish (publish_message_request) returns (publish_message_response);
-  rpc subscribe (subscribe_topic_request) returns (stream subscribe_message);
-  rpc unsubscribe (unsubscribe_topic_request) returns (unsubscribe_topic_response);
-  rpc get_client_id (client_id_request) returns (client_id_response);
-  // rpc get_topics (get_topics_r)
+  rpc GetClientId(ClientIdRequest)   returns (ClientIdResponse);
+  rpc ListTopics(ListTopicsRequest)  returns (ListTopicsResponse);
+  rpc Subscribe(SubscribeRequest)    returns (stream ReceivedMessage);
+  rpc Publish(PublishRequest)        returns (PublishResponse);
+  rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse);
 }
 
-message publish_message_request {
-  Message message = 1;
-  Topic topic = 2;
-  uint32 client_id = 3;
-}
+// ── Client Identity ───────────────────────────────────────────────────────────
 
-message publish_message_response {
-  string ack = 1;
-}
+message ClientIdRequest {}
 
-message subscribe_topic_request {
-  Topic topic = 1;
-  uint32 client_id = 2;
-}
-
-message subscribe_topic_response {
-  string ack = 1;
-}
-
-message unsubscribe_topic_request {
-  Topic topic = 1;
-  uint32 client_id = 2;
-}
-
-message unsubscribe_topic_response {
-  string ack = 1;
-}
-
-message client_id_request { 
-  string hello = 1;
-}
-
-message client_id_response { 
+message ClientIdResponse {
   uint32 client_id = 1;
 }
 
-message subscribe_message {
+// ── Topic Management ──────────────────────────────────────────────────────────
+
+message ListTopicsRequest {}
+
+message ListTopicsResponse {
+  repeated string topic_names = 1;
+}
+
+// ── Subscribe ─────────────────────────────────────────────────────────────────
+
+message SubscribeRequest {
+  uint32 client_id  = 1;
+  string topic_name = 2;
+}
+
+// Streamed to a subscriber for every message published on the topic.
+message ReceivedMessage {
+  uint32 message_id   = 1;
+  string topic_name   = 2;
+  uint32 publisher_id = 3;
+  string payload      = 4;
+}
+
+// ── Publish ───────────────────────────────────────────────────────────────────
+
+message PublishRequest {
+  uint32 client_id  = 1;
+  string topic_name = 2;
+  string payload    = 3;
+}
+
+message PublishResponse {
   uint32 message_id = 1;
-  string message = 2;
-  uint32 publish_client_id = 3;
-  Topic topic = 4;
-  optional string ack = 5;  
 }
 
-message Message {
-  string message = 1;
-  Topic topic = 2;
+// ── Unsubscribe ───────────────────────────────────────────────────────────────
+
+message UnsubscribeRequest {
+  uint32 client_id  = 1;
+  string topic_name = 2;
 }
 
-message Topic {
-  string topic_name = 1;
-}
+message UnsubscribeResponse {}
