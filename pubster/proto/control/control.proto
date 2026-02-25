@@ -2,61 +2,41 @@ syntax = "proto3";
 package pubster;
 
 service PubSub {
-  rpc GetClientId(ClientIdRequest)   returns (ClientIdResponse);
-  rpc ListTopics(ListTopicsRequest)  returns (ListTopicsResponse);
-  rpc Subscribe(SubscribeRequest)    returns (stream ReceivedMessage);
-  rpc Publish(PublishRequest)        returns (PublishResponse);
-  rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse);
+  // One persistent connection per client.
+  // First ClientEvent must be a ConnectCmd to establish identity.
+  rpc Handshake(stream ClientEvent) returns (stream ServerEvent);
+
+  // Stateless query — no client state required.
+  rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse);
 }
 
-// ── Client Identity ───────────────────────────────────────────────────────────
+// ── Client → Server ───────────────────────────────────────────────────────────
 
-message ClientIdRequest {}
+message ClientEvent {
+  oneof payload {
+    ConnectCmd     connect     = 1;  // must be first message on stream
+    SubscribeCmd   subscribe   = 2;
+    UnsubscribeCmd unsubscribe = 3;
+    PublishCmd     publish     = 4;
+  }
+}
 
-message ClientIdResponse {
-  uint32 client_id = 1;
+message ConnectCmd     { string client_name = 1; }
+message SubscribeCmd   { string topic_name  = 1; }
+message UnsubscribeCmd { string topic_name  = 1; }
+message PublishCmd     { string topic_name  = 1; string payload = 2; }
+
+// ── Server → Client ───────────────────────────────────────────────────────────
+
+// Pushed for every message on a topic the client is subscribed to.
+message ServerEvent {
+  uint32 message_id     = 1;
+  string topic_name     = 2;
+  string publisher_name = 3;
+  string payload        = 4;
 }
 
 // ── Topic Management ──────────────────────────────────────────────────────────
 
-message ListTopicsRequest {}
-
-message ListTopicsResponse {
-  repeated string topic_names = 1;
-}
-
-// ── Subscribe ─────────────────────────────────────────────────────────────────
-
-message SubscribeRequest {
-  uint32 client_id  = 1;
-  string topic_name = 2;
-}
-
-// Streamed to a subscriber for every message published on the topic.
-message ReceivedMessage {
-  uint32 message_id   = 1;
-  string topic_name   = 2;
-  uint32 publisher_id = 3;
-  string payload      = 4;
-}
-
-// ── Publish ───────────────────────────────────────────────────────────────────
-
-message PublishRequest {
-  uint32 client_id  = 1;
-  string topic_name = 2;
-  string payload    = 3;
-}
-
-message PublishResponse {
-  uint32 message_id = 1;
-}
-
-// ── Unsubscribe ───────────────────────────────────────────────────────────────
-
-message UnsubscribeRequest {
-  uint32 client_id  = 1;
-  string topic_name = 2;
-}
-
-message UnsubscribeResponse {}
+message ListTopicsRequest  {}
+message ListTopicsResponse { repeated string topic_names = 1; }

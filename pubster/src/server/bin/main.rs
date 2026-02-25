@@ -8,10 +8,8 @@ use tokio_stream::wrappers::BroadcastStream;
 use tonic::{transport::Server, Request, Response, Status};
 use server::pub_sub_server::{PubSub, PubSubServer};
 
-use server::{SubscribeTopicRequest, 
-    UnsubscribeTopicResponse, UnsubscribeTopicRequest, 
-    PublishMessageResponse, PublishMessageRequest,
-    ClientIdResponse, ClientIdRequest, SubscribeMessage, Topic};
+use server::{ClientEvent, ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
+    ServerEvent, ListTopicsRequest, ListTopicsResponse};
 
 
 pub mod server {
@@ -106,8 +104,6 @@ impl PubSub for Broker{
                         Err(_) => None
                     }
             });
-
-
         Ok(Response::new(
             Box::pin(filtered_rx_stream) as Self::subscribeStream
         ))
@@ -152,12 +148,18 @@ impl PubSub for Broker{
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>>{
     let addr = "[::1]:50051".parse()?;
-    let mut broker = Broker::new();
+    let broker = Broker::new();
+
+    println!("Server starting on {}", addr);
+
     Server::builder()
         .add_service(PubSubServer::new(broker))
-        .serve(addr)
+        .serve_with_shutdown(addr, async {
+            tokio::signal::ctrl_c().await.ok();
+            println!("\nReceived Ctrl+C, shutting down server...");
+        })
         .await?;
-    
-    Ok(())
 
+    println!("Server shutdown complete");
+    Ok(())
 }
