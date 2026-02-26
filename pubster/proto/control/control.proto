@@ -21,6 +21,7 @@ message ClientEvent {
   }
 }
 
+//Edge case: What if the client_name exactly matches the name, can maybe identify the client
 message ConnectCmd     { string client_name = 1; }
 message SubscribeCmd   { string topic_name  = 1; }
 message UnsubscribeCmd { string topic_name  = 1; }

@@ -1,6 +1,8 @@
 use tokio::sync::RwLock;
 use tokio_stream::StreamExt;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::Arc;
+use std::collections::HashMap;
 use tokio::sync::*;
 use std::pin::Pin;
 use tokio_stream::{Stream};
@@ -15,32 +17,30 @@ use server::{ClientEvent, ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
 pub mod server {
     tonic::include_proto!("pubster"); // The string specified here must match the proto package name
 }
+    
+    type serverEventStream = Pin<Box<dyn Stream<Item = Result<ServerEvent, Status>> + Send>>;
+
 
 #[derive(Debug)]
 pub struct Broker {
-    //TODO implement ring buffer for avialable client ids.
-    next_available_client_id: AtomicU32,
-    next_available_message_id: AtomicU32,
-    //locked hashmap that maps topic name to list of client ids
-    subscribers: RwLock<std::collections::HashMap<String, std::collections::HashSet<u32>>>,
-    tx: broadcast::Sender<SubscribeMessage>,
+    // topic_name -> (client_name -> sender for that client's outgoing stream)
+    // need to clean up dead entries when a client disconnects, could iterate thru topics, we shall
+    subscribers: RwLock<HashMap<String, HashMap<String, mpsc::Sender<Result<ServerEvent, Status>>>>>,
+    next_message_id: AtomicU32,
 }
 
-
-
 impl Broker {
-    pub fn new() -> Self{
-        let (tx, _rx) = broadcast::channel(128);
-        Broker { next_available_client_id: AtomicU32::new(0), next_available_message_id: AtomicU32::new(0), subscribers: Default::default(), tx: tx }
+    pub fn new() -> Self {
+        Broker {
+            subscribers: RwLock::new(HashMap::new()),
+            next_message_id: AtomicU32::new(0),
+        }
     }
 }
 
 
 #[tonic::async_trait]
-impl PubSub for Broker{
-    type subscribeStream = Pin<Box<dyn Stream<Item = Result<SubscribeMessage, Status>> + Send>>;
-
-
+impl PubSub for Arc<Broker>{
 
     async fn publish(&self, request: Request<PublishMessageRequest>) 
     -> Result<tonic::Response<PublishMessageResponse>, Status>{ 
@@ -153,7 +153,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     println!("Server starting on {}", addr);
 
     Server::builder()
-        .add_service(PubSubServer::new(broker))
+        .add_service(PubSubServer::new(Arc::new(broker)))
         .serve_with_shutdown(addr, async {
             tokio::signal::ctrl_c().await.ok();
             println!("\nReceived Ctrl+C, shutting down server...");
