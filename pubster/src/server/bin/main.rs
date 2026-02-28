@@ -6,13 +6,14 @@ use std::collections::HashMap;
 use tokio::sync::*;
 use std::pin::Pin;
 use tokio_stream::{Stream};
-use tokio_stream::wrappers::BroadcastStream;
-use tonic::{transport::Server, Request, Response, Status};
+use tokio_stream::wrappers::ReceiverStream;
+use tonic::{transport::Server, Request, Response, Status, Streaming};
 use server::pub_sub_server::{PubSub, PubSubServer};
 
-use server::{ClientEvent, ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
+use server::{ClientEvent, client_event::Payload, ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
     ServerEvent, ListTopicsRequest, ListTopicsResponse};
 
+const MPSC_BUF_SIZE:usize = 32; 
 
 pub mod server {
     tonic::include_proto!("pubster"); // The string specified here must match the proto package name
@@ -40,108 +41,83 @@ impl Broker {
 
 
 #[tonic::async_trait]
-impl PubSub for Arc<Broker>{
+impl PubSub for Arc<Broker> {
+    type HandshakeStream = serverEventStream;
 
-    async fn publish(&self, request: Request<PublishMessageRequest>) 
-    -> Result<tonic::Response<PublishMessageResponse>, Status>{ 
-        println!("Got a publish request: {:?}", &request);
-        let pub_request = request.into_inner();
-        let topic_name: String = pub_request.topic.unwrap().topic_name;
-        let message_data: String = pub_request.message.unwrap().message;
-        let publish_client_id: u32 = pub_request.client_id;
-        
-        
-        self.next_available_message_id.fetch_add(1, Ordering::Relaxed);
+    async fn handshake(
+        &self,
+        request: Request<Streaming<ClientEvent>>,
+    ) -> Result<Response<Self::HandshakeStream>, Status> {
+        let mut in_stream = request.into_inner();
+        let (tx, rx) = mpsc::channel(MPSC_BUF_SIZE);
+        let broker = Arc::clone(self);
 
-        let message = SubscribeMessage {
-            message_id: self.next_available_message_id.load(Ordering::Relaxed),
-            message: message_data,
-            publish_client_id: publish_client_id,
-            topic: Some(Topic { 
-                topic_name: topic_name.clone(),
-            }),
-            ack: Some(String::from("Hello")),
-        };
+        tokio::spawn(async move {
+            let mut client_name = String::new();
 
-        let _ = self.tx.send(message);
-        
-        let res = PublishMessageResponse {
-            ack: format!("Hello goon your message for topic {} has been recieved", topic_name),
-        };
-
-        Ok(Response::new(res))
-    }
-
-    //TODO Write this such that if the client is already subscribed, give some sort of Error
-    //TODO This needs to return a stream 
-    async fn subscribe(&self, request: Request<SubscribeTopicRequest>) 
-    -> Result<tonic::Response<Self::subscribeStream>, Status>{ 
-        println!("Got a subscribe request: {:?}", request);
-
-        let sub_request = request.into_inner();
-        let client_id: u32 = sub_request.client_id;
-        let topic_name: String = sub_request.topic.unwrap().topic_name;
-
-        let mut subscribers_guard = self.subscribers.write().await;
-        subscribers_guard
-            .entry(topic_name.clone())
-            .or_default()            // inserts a new HashSet if none exists
-            .insert(client_id);      // then inserts the client into it
-
-        let rx = self.tx.subscribe();
-
-        let filtered_rx_stream = BroadcastStream::new(rx)
-            .filter_map(move |msg| {
-                    match msg {
-                        Ok(msg) => {
-                            if let Some(topic) = &msg.topic {
-                                if topic.topic_name == topic_name{
-                                    return Some(Ok(msg));
-                                }
-                            }
-                            None
+            while let Some(event) = in_stream.next().await {
+                match event {
+                    Ok(ClientEvent { payload: Some(payload) }) => match payload {
+                        Payload::Connect(cmd) => {
+                            client_name = cmd.client_name;
                         }
-                        Err(_) => None
+                        Payload::Subscribe(cmd) => {
+                            let mut guard = broker.subscribers.write().await;
+                            guard
+                                .entry(cmd.topic_name)
+                                .or_insert_with(HashMap::new)
+                                .insert(client_name.clone(), tx.clone());
+                        }
+                        Payload::Unsubscribe(cmd) => {
+                            let mut guard = broker.subscribers.write().await;
+                            if let Some(topic_map) = guard.get_mut(&cmd.topic_name) {
+                                topic_map.remove(&client_name);
+                            }
+                        }
+                        Payload::Publish(cmd) => {
+                            let message_id = broker.next_message_id.fetch_add(1, Ordering::Relaxed);
+                            let event = ServerEvent {
+                                message_id,
+                                topic_name: cmd.topic_name.clone(),
+                                publisher_name: client_name.clone(),
+                                payload: cmd.payload,
+                            };
+                            // collect senders before awaiting so we don't hold the lock across awaits
+                            let senders: Vec<_> = {
+                                let guard = broker.subscribers.read().await;
+                                guard
+                                    .get(&cmd.topic_name)
+                                    .map(|m| m.values().cloned().collect())
+                                    .unwrap_or_default()
+                            };
+                            for sender in senders {
+                                let _ = sender.send(Ok(event.clone())).await;
+                            }
+                        }
                     }
-            });
-        Ok(Response::new(
-            Box::pin(filtered_rx_stream) as Self::subscribeStream
-        ))
-    
-    }
+                    Ok(ClientEvent { payload: None }) => {}
+                    Err(_) => break,
+                }
+            }
 
-
-    async fn unsubscribe(&self, request: Request<UnsubscribeTopicRequest>) 
-    -> Result<Response<UnsubscribeTopicResponse>, Status>{
-        println!("Got a unsubscribe request: {:?}", request);
-
-        let unsub_request = request.into_inner();
-        let client_id: u32 = unsub_request.client_id;
-        let topic_name: String = unsub_request.topic.unwrap().topic_name;
-
-        let mut subscribers_guard = self.subscribers.write().await;
-        if let Some(set) = subscribers_guard.get_mut(&topic_name) {
-            set.remove(&client_id);
-        } 
-
-        let res = UnsubscribeTopicResponse{
-            ack: format!("Hello goon your unsubscription for topic {} has been recieved", topic_name),
-        };
-
-        Ok(Response::new(res))
-    }
-
-    async fn get_client_id(&self, request: Request<ClientIdRequest>) -> Result<Response<ClientIdResponse>, Status> {
-
-
-        self.next_available_client_id.fetch_add(1, Ordering::Relaxed);
-
-        let res = Response::new(ClientIdResponse{
-            client_id: self.next_available_client_id.load(Ordering::Relaxed),
+            // client disconnected — remove from all topics
+            let mut guard = broker.subscribers.write().await;
+            for topic_map in guard.values_mut() {
+                topic_map.remove(&client_name);
+            }
         });
 
+        let out_stream = ReceiverStream::new(rx);
+        Ok(Response::new(Box::pin(out_stream) as Self::HandshakeStream))
+    }
 
-        return Ok(res);
+    async fn list_topics(
+        &self,
+        _request: Request<ListTopicsRequest>,
+    ) -> Result<Response<ListTopicsResponse>, Status> {
+        let guard = self.subscribers.read().await;
+        let topic_names = guard.keys().cloned().collect();
+        Ok(Response::new(ListTopicsResponse { topic_names }))
     }
 }
 
