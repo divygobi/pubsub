@@ -8,18 +8,14 @@ use std::pin::Pin;
 use tokio_stream::{Stream};
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{transport::Server, Request, Response, Status, Streaming};
-use server::pub_sub_server::{PubSub, PubSubServer};
+use pubster::proto::pub_sub_server::{PubSub, PubSubServer};
 
-use server::{ClientEvent, client_event::Payload, ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
+use pubster::proto::{ClientEvent, client_event::Payload, ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
     ServerEvent, ListTopicsRequest, ListTopicsResponse};
 
-const MPSC_BUF_SIZE:usize = 32; 
-
-pub mod server {
-    tonic::include_proto!("pubster"); // The string specified here must match the proto package name
-}
+const MPSC_BUF_SIZE:usize = 32;
     
-    type serverEventStream = Pin<Box<dyn Stream<Item = Result<ServerEvent, Status>> + Send>>;
+type serverEventStream = Pin<Box<dyn Stream<Item = Result<ServerEvent, Status>> + Send>>;
 
 
 #[derive(Debug)]
@@ -39,9 +35,10 @@ impl Broker {
     }
 }
 
+struct BrokerService(Arc<Broker>);
 
 #[tonic::async_trait]
-impl PubSub for Arc<Broker> {
+impl PubSub for BrokerService {
     type HandshakeStream = serverEventStream;
 
     async fn handshake(
@@ -50,7 +47,7 @@ impl PubSub for Arc<Broker> {
     ) -> Result<Response<Self::HandshakeStream>, Status> {
         let mut in_stream = request.into_inner();
         let (tx, rx) = mpsc::channel(MPSC_BUF_SIZE);
-        let broker = Arc::clone(self);
+        let broker = Arc::clone(&self.0);
 
         tokio::spawn(async move {
             let mut client_name = String::new();
@@ -115,7 +112,7 @@ impl PubSub for Arc<Broker> {
         &self,
         _request: Request<ListTopicsRequest>,
     ) -> Result<Response<ListTopicsResponse>, Status> {
-        let guard = self.subscribers.read().await;
+        let guard = self.0.subscribers.read().await;
         let topic_names = guard.keys().cloned().collect();
         Ok(Response::new(ListTopicsResponse { topic_names }))
     }
@@ -129,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     println!("Server starting on {}", addr);
 
     Server::builder()
-        .add_service(PubSubServer::new(Arc::new(broker)))
+        .add_service(PubSubServer::new(BrokerService(Arc::new(broker))))
         .serve_with_shutdown(addr, async {
             tokio::signal::ctrl_c().await.ok();
             println!("\nReceived Ctrl+C, shutting down server...");

@@ -1,7 +1,7 @@
 use std::io;
 
-use client::pub_sub_client::PubSubClient;
-use client::{
+use pubster::proto::pub_sub_client::PubSubClient;
+use pubster::proto::{
     ClientEvent, client_event::Payload,
     ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
     ListTopicsRequest,
@@ -9,10 +9,6 @@ use client::{
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::ReceiverStream;
-
-pub mod client {
-    tonic::include_proto!("pubster");
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
