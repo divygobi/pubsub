@@ -1,4 +1,5 @@
 use std::io;
+use tonic::transport::Channel;
 
 use pubster::proto::pub_sub_client::PubSubClient;
 use pubster::proto::{
@@ -9,6 +10,32 @@ use pubster::proto::{
 use tokio::sync::mpsc;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::ReceiverStream;
+
+pub async fn list_topics(server: &mut PubSubClient<Channel>) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    let response = server.list_topics(ListTopicsRequest {}).await?.into_inner();
+    Ok(response.topic_names)
+}
+
+pub async fn subscribe(tx: &mpsc::Sender<ClientEvent>, topic_name: String) -> Result<(), Box<dyn std::error::Error>> {
+    tx.send(ClientEvent {
+        payload: Some(Payload::Subscribe(SubscribeCmd { topic_name })),
+    }).await?;
+    Ok(())
+}
+
+pub async fn publish(tx: &mpsc::Sender<ClientEvent>, topic_name: String, payload: String) -> Result<(), Box<dyn std::error::Error>> {
+    tx.send(ClientEvent {
+        payload: Some(Payload::Publish(PublishCmd { topic_name, payload })),
+    }).await?;
+    Ok(())
+}
+
+pub async fn unsubscribe(tx: &mpsc::Sender<ClientEvent>, topic_name: String) -> Result<(), Box<dyn std::error::Error>> {
+    tx.send(ClientEvent {
+        payload: Some(Payload::Unsubscribe(UnsubscribeCmd { topic_name })),
+    }).await?;
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -57,20 +84,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         match option.trim() {
             "0" => {
-                let response = server.list_topics(ListTopicsRequest {}).await?.into_inner();
-                if response.topic_names.is_empty() {
+                let topics = list_topics(&mut server).await?;
+                if topics.is_empty() {
                     println!("No topics.");
                 } else {
-                    println!("Topics: {}", response.topic_names.join(", "));
+                    println!("Topics: {}", topics.join(", "));
                 }
             }
             "1" => {
                 println!("Enter topic name to subscribe:");
                 let mut topic = String::new();
                 io::stdin().read_line(&mut topic).expect("Failed to read topic");
-                tx.send(ClientEvent {
-                    payload: Some(Payload::Subscribe(SubscribeCmd { topic_name: topic.trim().to_string() })),
-                }).await?;
+                subscribe(&tx, topic.trim().to_string()).await?;
             }
             "2" => {
                 println!("Enter topic name:");
@@ -79,20 +104,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Enter message:");
                 let mut msg = String::new();
                 io::stdin().read_line(&mut msg).expect("Failed to read message");
-                tx.send(ClientEvent {
-                    payload: Some(Payload::Publish(PublishCmd {
-                        topic_name: topic.trim().to_string(),
-                        payload: msg.trim().to_string(),
-                    })),
-                }).await?;
+                publish(&tx, topic.trim().to_string(), msg.trim().to_string()).await?;
             }
             "3" => {
                 println!("Enter topic name to unsubscribe:");
                 let mut topic = String::new();
                 io::stdin().read_line(&mut topic).expect("Failed to read topic");
-                tx.send(ClientEvent {
-                    payload: Some(Payload::Unsubscribe(UnsubscribeCmd { topic_name: topic.trim().to_string() })),
-                }).await?;
+                unsubscribe(&tx, topic.trim().to_string()).await?;
             }
             "4" => {
                 println!("Exiting...");
