@@ -44,8 +44,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     io::stdin().read_line(&mut client_name).expect("Failed to read name");
     let client_name = client_name.trim().to_string();
 
+    dotenvy::dotenv().ok();
+    let server_url = std::env::var("SERVER_URL").unwrap_or_else(|_| {
+        let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "::1".to_string());
+        let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "50051".to_string());
+        format!("http://[{}]:{}", host, port)
+    });
+
     println!("Connecting to server...");
-    let mut server = PubSubClient::connect("http://[::1]:50051").await?;
+    let mut server = PubSubClient::connect(server_url).await?;
 
     // Channel: tx → we send ClientEvents; rx → tonic sends them to the server
     let (tx, rx) = mpsc::channel::<ClientEvent>(32);
