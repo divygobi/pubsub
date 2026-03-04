@@ -24,9 +24,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let server_url = format!("http://[{}]:{}", host, port);
 
     let sim = pubster::simulator::Simulator::new(server_url);
-    let _children = sim.run(num_clients, interval_ms).await?;
+    sim.run(num_clients, interval_ms).await;
 
-    // Hold open — children are still running.
+    // Hold open — clients are still running in spawned tasks.
     tokio::signal::ctrl_c().await?;
     Ok(())
 }

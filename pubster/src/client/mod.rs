@@ -35,12 +35,13 @@ impl Client {
         let mut in_stream = grpc.handshake(ReceiverStream::new(rx)).await?.into_inner();
 
         // Background task: print every incoming ServerEvent
+        let display_name = name.clone();
         tokio::spawn(async move {
             while let Some(result) = in_stream.next().await {
                 match result {
                     Ok(event) => println!(
-                        "[{}] {}: {}",
-                        event.topic_name, event.publisher_name, event.payload
+                        "[{}][{}] {}: {}",
+                        display_name, event.topic_name, event.publisher_name, event.payload
                     ),
                     Err(e) => {
                         eprintln!("Stream error: {}", e);
