@@ -39,7 +39,7 @@ impl Client {
         tokio::spawn(async move {
             while let Some(result) = in_stream.next().await {
                 match result {
-                    Ok(event) => println!(
+                    Ok(event) => crate::log_line!(
                         "[{}][{}] {}: {}",
                         display_name, event.topic_name, event.publisher_name, event.payload
                     ),

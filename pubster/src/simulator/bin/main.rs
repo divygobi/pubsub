@@ -23,6 +23,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "50051".to_string());
     let server_url = format!("http://[{}]:{}", host, port);
 
+    pubster::logger::init("simulator.log")?;
+
     let sim = pubster::simulator::Simulator::new(server_url);
     sim.run(num_clients, interval_ms).await;
 

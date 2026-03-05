@@ -31,14 +31,16 @@ impl Simulator {
         let server_url = self.server_url.clone();
 
         tokio::spawn(async move {
-            let _client = match Client::connect(server_url, client_name).await {
+            let client = match Client::connect(server_url, client_name.clone()).await {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("spawn_client error: {}", e);
                     return;
                 }
             };
-            // receive loop is already running inside Client::connect()
+            if let Err(e) = client.subscribe(&client_name).await {
+                eprintln!("subscribe error: {}", e);
+            }
             // hold the client alive until the process exits
             tokio::signal::ctrl_c().await.ok();
         });
