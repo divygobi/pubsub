@@ -25,7 +25,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     pubster::logger::init("simulator.log")?;
 
-    let sim = pubster::simulator::Simulator::new(server_url);
+    let mode = match std::env::var("SELECTION_MODE").as_deref() {
+        Ok("deterministic") => pubster::simulator::SelectionMode::Deterministic,
+        _ => pubster::simulator::SelectionMode::Random,
+    };
+
+    let sim = pubster::simulator::Simulator::new(server_url, mode);
     sim.run(num_clients, interval_ms).await;
 
     // Hold open — clients are still running in spawned tasks.

@@ -3,16 +3,23 @@ use std::time::Duration;
 
 use crate::client::Client;
 
+pub enum SelectionMode {
+    Random,
+    Deterministic,
+}
+
 pub struct Simulator {
     server_url: String,
     next_client_id: AtomicU32,
+    selection_mode: SelectionMode,
 }
 
 impl Simulator {
-    pub fn new(server_url: String) -> Self {
+    pub fn new(server_url: String, selection_mode: SelectionMode) -> Self {
         Simulator {
             server_url,
             next_client_id: AtomicU32::new(1),
+            selection_mode,
         }
     }
 
@@ -29,6 +36,7 @@ impl Simulator {
         let id = self.next_client_id.fetch_add(1, Ordering::Relaxed);
         let client_name = format!("client{}", id);
         let server_url = self.server_url.clone();
+        let use_random = matches!(self.selection_mode, SelectionMode::Random);
 
         tokio::spawn(async move {
             let mut client = match Client::connect(server_url, client_name).await {
@@ -47,12 +55,15 @@ impl Simulator {
                 }
             };
 
-            // Seed with client ID XOR current nanoseconds so each client picks differently
-            let time_seed = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .subsec_nanos() as u64;
-            let selected = random_select(&topics, 10, id as u64 ^ time_seed);
+            let selected = if use_random {
+                let time_seed = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .subsec_nanos() as u64;
+                random_select(&topics, 10, id as u64 ^ time_seed)
+            } else {
+                deterministic_select(&topics, 10)
+            };
 
             for topic in &selected {
                 if let Err(e) = client.subscribe(topic).await {
@@ -64,6 +75,11 @@ impl Simulator {
             tokio::signal::ctrl_c().await.ok();
         });
     }
+}
+
+// Returns the first n items from the slice (or all of them if fewer than n exist).
+fn deterministic_select(items: &[String], n: usize) -> Vec<String> {
+    items.iter().take(n).cloned().collect()
 }
 
 // Fisher-Yates shuffle via LCG, returns up to n items from the slice.
