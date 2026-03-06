@@ -31,18 +31,52 @@ impl Simulator {
         let server_url = self.server_url.clone();
 
         tokio::spawn(async move {
-            let client = match Client::connect(server_url, client_name.clone()).await {
+            let mut client = match Client::connect(server_url, client_name).await {
                 Ok(c) => c,
                 Err(e) => {
                     eprintln!("spawn_client error: {}", e);
                     return;
                 }
             };
-            if let Err(e) = client.subscribe(&client_name).await {
-                eprintln!("subscribe error: {}", e);
+
+            let topics = match client.list_topics().await {
+                Ok(t) => t,
+                Err(e) => {
+                    eprintln!("list_topics error: {}", e);
+                    vec![]
+                }
+            };
+
+            // Seed with client ID XOR current nanoseconds so each client picks differently
+            let time_seed = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos() as u64;
+            let selected = random_select(&topics, 10, id as u64 ^ time_seed);
+
+            for topic in &selected {
+                if let Err(e) = client.subscribe(topic).await {
+                    eprintln!("subscribe error: {}", e);
+                }
             }
+
             // hold the client alive until the process exits
             tokio::signal::ctrl_c().await.ok();
         });
     }
+}
+
+// Fisher-Yates shuffle via LCG, returns up to n items from the slice.
+fn random_select(items: &[String], n: usize, seed: u64) -> Vec<String> {
+    if items.is_empty() {
+        return vec![];
+    }
+    let mut indices: Vec<usize> = (0..items.len()).collect();
+    let mut rng = seed ^ 0x9e3779b97f4a7c15;
+    for i in (1..indices.len()).rev() {
+        rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+        let j = (rng >> 33) as usize % (i + 1);
+        indices.swap(i, j);
+    }
+    indices.into_iter().take(n).map(|i| items[i].clone()).collect()
 }
