@@ -15,7 +15,7 @@ use pubster::proto::{ClientEvent, client_event::Payload, ConnectCmd, SubscribeCm
 
 const MPSC_BUF_SIZE:usize = 32;
     
-type serverEventStream = Pin<Box<dyn Stream<Item = Result<ServerEvent, Status>> + Send>>;
+type ServerEventStream = Pin<Box<dyn Stream<Item = Result<ServerEvent, Status>> + Send>>;
 
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ struct BrokerService(Arc<Broker>);
 
 #[tonic::async_trait]
 impl PubSub for BrokerService {
-    type HandshakeStream = serverEventStream;
+    type HandshakeStream = ServerEventStream;
 
     async fn handshake(
         &self,

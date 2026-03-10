@@ -2,7 +2,7 @@ use std::io;
 use pubster::client::Client;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Enter your client name:");
     let mut client_name = String::new();
     io::stdin().read_line(&mut client_name).expect("Failed to read name");
