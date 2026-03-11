@@ -11,7 +11,7 @@ use tonic::{transport::Server, Request, Response, Status, Streaming};
 use pubster::proto::pub_sub_server::{PubSub, PubSubServer};
 
 use pubster::proto::{ClientEvent, client_event::Payload, ConnectCmd, SubscribeCmd, UnsubscribeCmd, PublishCmd,
-    ServerEvent, ListTopicsRequest, ListTopicsResponse};
+    ServerEvent, server_event, MessageEvent, ErrorEvent, ListTopicsRequest, ListTopicsResponse};
 
 const MPSC_BUF_SIZE:usize = 32;
     
@@ -50,13 +50,24 @@ impl PubSub for BrokerService {
         let broker = Arc::clone(&self.0);
 
         tokio::spawn(async move {
-            let mut client_name = String::new();
+            // First message must be a ConnectCmd — reject anything else
+            let client_name = match in_stream.next().await {
+                Some(Ok(ClientEvent { payload: Some(Payload::Connect(cmd)) })) => cmd.client_name,
+                _ => {
+                    let _ = tx.send(Ok(ServerEvent {
+                        kind: Some(server_event::Kind::Error(ErrorEvent {
+                            message: "First message must be ConnectCmd".to_string(),
+                        })),
+                    })).await;
+                    return;
+                }
+            };
 
             while let Some(event) = in_stream.next().await {
                 match event {
                     Ok(ClientEvent { payload: Some(payload) }) => match payload {
-                        Payload::Connect(cmd) => {
-                            client_name = cmd.client_name;
+                        Payload::Connect(_) => {
+                            // Ignore duplicate ConnectCmds — name already set above
                         }
                         Payload::Subscribe(cmd) => {
                             let mut guard = broker.subscribers.write().await;
@@ -74,10 +85,12 @@ impl PubSub for BrokerService {
                         Payload::Publish(cmd) => {
                             let message_id = broker.next_message_id.fetch_add(1, Ordering::Relaxed);
                             let event = ServerEvent {
-                                message_id,
-                                topic_name: cmd.topic_name.clone(),
-                                publisher_name: client_name.clone(),
-                                payload: cmd.payload,
+                                kind: Some(server_event::Kind::Message(MessageEvent {
+                                    message_id,
+                                    topic_name: cmd.topic_name.clone(),
+                                    publisher_name: client_name.clone(),
+                                    payload: cmd.payload,
+                                })),
                             };
                             // collect senders before awaiting so we don't hold the lock across awaits
                             let senders: Vec<_> = {

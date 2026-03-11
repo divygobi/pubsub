@@ -6,6 +6,8 @@ pub mod client;
 pub mod logger;
 pub mod simulator;
 
+pub type ThreadSafeError = Box<dyn std::error::Error + Send + Sync>;
+
 #[macro_export]
 macro_rules! log_line {
     ($($arg:tt)*) => {
