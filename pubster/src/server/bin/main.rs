@@ -23,6 +23,7 @@ pub struct Broker {
     // topic_name -> (client_name -> sender for that client's outgoing stream)
     // need to clean up dead entries when a client disconnects, could iterate thru topics, we shall
     subscribers: RwLock<HashMap<String, HashMap<String, mpsc::Sender<Result<ServerEvent, Status>>>>>,
+    dropped_messages: HashMap<String, Vec<MessageEvent>>,
     next_message_id: AtomicU32,
 }
 
@@ -30,12 +31,15 @@ impl Broker {
     pub fn new() -> Self {
         Broker {
             subscribers: RwLock::new(HashMap::new()),
+            dropped_messages: HashMap::new() ,
             next_message_id: AtomicU32::new(0),
         }
     }
 }
 
-struct BrokerService(Arc<Broker>);
+struct BrokerService{
+    broker: Arc<Broker>,
+}
 
 #[tonic::async_trait]
 impl PubSub for BrokerService {
@@ -47,7 +51,7 @@ impl PubSub for BrokerService {
     ) -> Result<Response<Self::HandshakeStream>, Status> {
         let mut in_stream = request.into_inner();
         let (tx, rx) = mpsc::channel(MPSC_BUF_SIZE);
-        let broker = Arc::clone(&self.0);
+        let broker = Arc::clone(&self.broker);
 
         tokio::spawn(async move {
             // First message must be a ConnectCmd — reject anything else
@@ -101,7 +105,17 @@ impl PubSub for BrokerService {
                                     .unwrap_or_default()
                             };
                             for sender in senders {
-                                let _ = sender.send(Ok(event.clone())).await;
+                                let send_status = sender.send(Ok(event.clone())).await;
+
+                                match send_status {
+                                    Ok(send_status) => {
+
+
+                                    }
+                                    Err(send_status) => {
+
+                                    }
+                                }
                             }
                         }
                     }
@@ -125,7 +139,7 @@ impl PubSub for BrokerService {
         &self,
         _request: Request<ListTopicsRequest>,
     ) -> Result<Response<ListTopicsResponse>, Status> {
-        let guard = self.0.subscribers.read().await;
+        let guard = self.broker.subscribers.read().await;
         let topic_names = guard.keys().cloned().collect();
         Ok(Response::new(ListTopicsResponse { topic_names }))
     }
@@ -142,7 +156,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>>{
     println!("Server starting on {}", addr);
 
     Server::builder()
-        .add_service(PubSubServer::new(BrokerService(Arc::new(broker))))
+        .add_service(PubSubServer::new(BrokerService{ broker: Arc::new(broker) }) )
         .serve_with_shutdown(addr, async {
             tokio::signal::ctrl_c().await.ok();
             println!("\nReceived Ctrl+C, shutting down server...");

@@ -23,6 +23,7 @@ impl Simulator {
         }
     }
 
+    //Ensure Server is running
     pub async fn run(&self, num_clients: u32, interval_ms: u64) {
         for _ in 0..num_clients {
             self.spawn_client().await;
