@@ -56,6 +56,14 @@ impl Simulator {
                 }
             };
 
+            // Fall back to a hardcoded topic when the server has none yet, so the
+            // simulator is self-contained for smoke testing.
+            let topics = if topics.is_empty() {
+                vec!["test".to_string()]
+            } else {
+                topics
+            };
+
             let selected = if use_random {
                 let time_seed = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
@@ -69,6 +77,18 @@ impl Simulator {
             for topic in &selected {
                 if let Err(e) = client.subscribe(topic).await {
                     eprintln!("subscribe error: {}", e);
+                }
+            }
+
+            // Odd-ID clients publish a few messages so there is actual traffic for
+            // even-ID subscribers to receive.
+            if id % 2 != 0 {
+                for i in 1..=5u32 {
+                    tokio::time::sleep(Duration::from_millis(200)).await;
+                    let msg = format!("hello from client{} (msg {})", id, i);
+                    if let Err(e) = client.publish("test", &msg).await {
+                        eprintln!("publish error: {}", e);
+                    }
                 }
             }
 
