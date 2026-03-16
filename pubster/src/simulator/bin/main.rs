@@ -23,7 +23,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = std::env::var("SERVER_PORT").unwrap_or_else(|_| "50051".to_string());
     let server_url = format!("http://[{}]:{}", host, port);
 
-    pubster::logger::init("simulator.log")?;
+    let log_path = std::env::var("LOG_PATH")
+        .unwrap_or_else(|_| "testResults/simulator.log".to_string());
+    let append = std::env::var("LOG_MODE").as_deref() != Ok("write");
+    if let Some(parent) = std::path::Path::new(&log_path).parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    pubster::logger::init(&log_path, append)?;
 
     let mode = match std::env::var("SELECTION_MODE").as_deref() {
         Ok("deterministic") => pubster::simulator::SelectionMode::Deterministic,
