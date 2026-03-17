@@ -95,6 +95,8 @@ impl PubSub for BrokerService {
                 }
             };
 
+            println!("[server] client connected:    {}", client_name);
+
             // Reconnect path — flush any messages queued while this client was gone.
             {
                 let mut dropped = broker.dropped_messages.write().await;
@@ -194,6 +196,8 @@ impl PubSub for BrokerService {
                     }
                 }
             }
+
+            println!("[server] client disconnected: {}", client_name);
 
             // Client disconnected — mark all their subscriptions as None rather than
             // removing them, so queued messages can still be associated with each topic

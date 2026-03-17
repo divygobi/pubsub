@@ -1,6 +1,8 @@
 // Usage: ./simulator [num_clients] [interval_ms]
 // Falls back to NUM_CLIENTS / SPAWN_INTERVAL_MS from .env if args not given.
 
+use std::io::{self, Write};
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
@@ -25,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let log_path = std::env::var("LOG_PATH")
         .unwrap_or_else(|_| "testResults/simulator.log".to_string());
-    let append = std::env::var("LOG_MODE").as_deref() != Ok("write");
+    let append = std::env::var("LOG_MODE").as_deref() == Ok("append");
     if let Some(parent) = std::path::Path::new(&log_path).parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -37,9 +39,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let sim = pubster::simulator::Simulator::new(server_url, mode);
-    sim.run(num_clients, interval_ms).await;
 
-    // Hold open — clients are still running in spawned tasks.
-    tokio::signal::ctrl_c().await?;
+    loop {
+        println!("\n--- Running simulation ({} clients) ---", num_clients);
+        sim.run(num_clients, interval_ms).await;
+
+        print!("\nPress Enter to run again, or Ctrl+C to quit... ");
+        io::stdout().flush()?;
+
+        // Run the blocking stdin read on a thread-pool thread so the tokio
+        // runtime stays free to handle signals. Race it against Ctrl+C.
+        let enter = tokio::task::spawn_blocking(|| {
+            let mut buf = String::new();
+            io::stdin().read_line(&mut buf)
+        });
+
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {
+                println!("\nShutting down simulator...");
+                break;
+            }
+            result = enter => { result??; }
+        }
+    }
     Ok(())
 }

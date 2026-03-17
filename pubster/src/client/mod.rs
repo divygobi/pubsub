@@ -46,8 +46,8 @@ impl Client {
                     Ok(event) => match event.kind {
                         Some(server_event::Kind::Message(msg)) => {
                             crate::log_line!(
-                                "[{}][{}] {}: {}",
-                                display_name, msg.topic_name, msg.publisher_name, msg.payload
+                                "MSG  topic={:<12} pub={:<10} sub={:<10} \"{}\"",
+                                msg.topic_name, msg.publisher_name, display_name, msg.payload
                             );
                             if let Some(ref tx) = event_tx {
                                 let _ = tx.send(ServerEvent {
