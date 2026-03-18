@@ -1,27 +1,67 @@
-[client1][test] client1: hello from client1 (msg 1)
-[client2][test] client1: hello from client1 (msg 2)
-[client1][test] client1: hello from client1 (msg 2)
-[client3][test] client1: hello from client1 (msg 3)
-[client1][test] client1: hello from client1 (msg 3)
-[client2][test] client1: hello from client1 (msg 3)
-[client3][test] client3: hello from client3 (msg 1)
-[client3][test] client1: hello from client1 (msg 4)
-[client2][test] client3: hello from client3 (msg 1)
-[client2][test] client1: hello from client1 (msg 4)
-[client1][test] client1: hello from client1 (msg 4)
-[client1][test] client3: hello from client3 (msg 1)
-[client3][test] client3: hello from client3 (msg 2)
-[client3][test] client1: hello from client1 (msg 5)
-[client2][test] client3: hello from client3 (msg 2)
-[client1][test] client3: hello from client3 (msg 2)
-[client2][test] client1: hello from client1 (msg 5)
-[client1][test] client1: hello from client1 (msg 5)
-[client3][test] client3: hello from client3 (msg 3)
-[client2][test] client3: hello from client3 (msg 3)
-[client1][test] client3: hello from client3 (msg 3)
-[client1][test] client3: hello from client3 (msg 4)
-[client3][test] client3: hello from client3 (msg 4)
-[client2][test] client3: hello from client3 (msg 4)
-[client3][test] client3: hello from client3 (msg 5)
-[client1][test] client3: hello from client3 (msg 5)
-[client2][test] client3: hello from client3 (msg 5)
+[05:02:50.169] MSG  topic=test         pub=client5    sub=client5    "hello from client5 (msg 1)"
+[05:02:50.169] MSG  topic=test         pub=client5    sub=client4    "hello from client5 (msg 1)"
+[05:02:50.371] MSG  topic=test         pub=client5    sub=client5    "hello from client5 (msg 2)"
+[05:02:50.371] MSG  topic=test         pub=client5    sub=client4    "hello from client5 (msg 2)"
+[05:02:50.573] MSG  topic=test         pub=client5    sub=client4    "hello from client5 (msg 3)"
+[05:02:50.573] MSG  topic=test         pub=client5    sub=client6    "hello from client5 (msg 3)"
+[05:02:50.573] MSG  topic=test         pub=client5    sub=client5    "hello from client5 (msg 3)"
+[05:02:50.775] MSG  topic=test         pub=client5    sub=client6    "hello from client5 (msg 4)"
+[05:02:50.775] MSG  topic=test         pub=client5    sub=client4    "hello from client5 (msg 4)"
+[05:02:50.775] MSG  topic=test         pub=client5    sub=client5    "hello from client5 (msg 4)"
+[05:02:50.976] MSG  topic=test         pub=client5    sub=client5    "hello from client5 (msg 5)"
+[05:02:50.976] MSG  topic=test         pub=client5    sub=client4    "hello from client5 (msg 5)"
+[05:02:50.976] MSG  topic=test         pub=client5    sub=client6    "hello from client5 (msg 5)"
+[05:03:10.971] MSG  topic=test         pub=client7    sub=client7    "hello from client7 (msg 1)"
+[05:03:10.971] MSG  topic=test         pub=client7    sub=client4    "hello from client7 (msg 1)"
+[05:03:10.971] MSG  topic=test         pub=client7    sub=client5    "hello from client7 (msg 1)"
+[05:03:10.971] MSG  topic=test         pub=client7    sub=client6    "hello from client7 (msg 1)"
+[05:03:11.172] MSG  topic=test         pub=client7    sub=client5    "hello from client7 (msg 2)"
+[05:03:11.172] MSG  topic=test         pub=client7    sub=client4    "hello from client7 (msg 2)"
+[05:03:11.172] MSG  topic=test         pub=client7    sub=client6    "hello from client7 (msg 2)"
+[05:03:11.172] MSG  topic=test         pub=client7    sub=client7    "hello from client7 (msg 2)"
+[05:03:11.375] MSG  topic=test         pub=client7    sub=client5    "hello from client7 (msg 3)"
+[05:03:11.375] MSG  topic=test         pub=client7    sub=client6    "hello from client7 (msg 3)"
+[05:03:11.375] MSG  topic=test         pub=client7    sub=client4    "hello from client7 (msg 3)"
+[05:03:11.375] MSG  topic=test         pub=client7    sub=client8    "hello from client7 (msg 3)"
+[05:03:11.375] MSG  topic=test         pub=client7    sub=client7    "hello from client7 (msg 3)"
+[05:03:11.577] MSG  topic=test         pub=client7    sub=client8    "hello from client7 (msg 4)"
+[05:03:11.577] MSG  topic=test         pub=client7    sub=client6    "hello from client7 (msg 4)"
+[05:03:11.577] MSG  topic=test         pub=client7    sub=client4    "hello from client7 (msg 4)"
+[05:03:11.577] MSG  topic=test         pub=client7    sub=client7    "hello from client7 (msg 4)"
+[05:03:11.577] MSG  topic=test         pub=client7    sub=client5    "hello from client7 (msg 4)"
+[05:03:11.779] MSG  topic=test         pub=client7    sub=client4    "hello from client7 (msg 5)"
+[05:03:11.779] MSG  topic=test         pub=client7    sub=client6    "hello from client7 (msg 5)"
+[05:03:11.779] MSG  topic=test         pub=client7    sub=client8    "hello from client7 (msg 5)"
+[05:03:11.779] MSG  topic=test         pub=client7    sub=client7    "hello from client7 (msg 5)"
+[05:03:11.779] MSG  topic=test         pub=client7    sub=client5    "hello from client7 (msg 5)"
+[05:03:11.779] MSG  topic=test         pub=client7    sub=client9    "hello from client7 (msg 5)"
+[05:03:11.977] MSG  topic=test         pub=client9    sub=client8    "hello from client9 (msg 1)"
+[05:03:11.977] MSG  topic=test         pub=client9    sub=client7    "hello from client9 (msg 1)"
+[05:03:11.977] MSG  topic=test         pub=client9    sub=client4    "hello from client9 (msg 1)"
+[05:03:11.977] MSG  topic=test         pub=client9    sub=client6    "hello from client9 (msg 1)"
+[05:03:11.977] MSG  topic=test         pub=client9    sub=client9    "hello from client9 (msg 1)"
+[05:03:11.977] MSG  topic=test         pub=client9    sub=client5    "hello from client9 (msg 1)"
+[05:03:12.178] MSG  topic=test         pub=client9    sub=client9    "hello from client9 (msg 2)"
+[05:03:12.178] MSG  topic=test         pub=client9    sub=client7    "hello from client9 (msg 2)"
+[05:03:12.178] MSG  topic=test         pub=client9    sub=client6    "hello from client9 (msg 2)"
+[05:03:12.178] MSG  topic=test         pub=client9    sub=client5    "hello from client9 (msg 2)"
+[05:03:12.178] MSG  topic=test         pub=client9    sub=client4    "hello from client9 (msg 2)"
+[05:03:12.178] MSG  topic=test         pub=client9    sub=client8    "hello from client9 (msg 2)"
+[05:03:12.380] MSG  topic=test         pub=client9    sub=client5    "hello from client9 (msg 3)"
+[05:03:12.380] MSG  topic=test         pub=client9    sub=client8    "hello from client9 (msg 3)"
+[05:03:12.380] MSG  topic=test         pub=client9    sub=client4    "hello from client9 (msg 3)"
+[05:03:12.380] MSG  topic=test         pub=client9    sub=client7    "hello from client9 (msg 3)"
+[05:03:12.380] MSG  topic=test         pub=client9    sub=client9    "hello from client9 (msg 3)"
+[05:03:12.380] MSG  topic=test         pub=client9    sub=client6    "hello from client9 (msg 3)"
+[05:03:12.582] MSG  topic=test         pub=client9    sub=client7    "hello from client9 (msg 4)"
+[05:03:12.582] MSG  topic=test         pub=client9    sub=client4    "hello from client9 (msg 4)"
+[05:03:12.582] MSG  topic=test         pub=client9    sub=client8    "hello from client9 (msg 4)"
+[05:03:12.582] MSG  topic=test         pub=client9    sub=client9    "hello from client9 (msg 4)"
+[05:03:12.582] MSG  topic=test         pub=client9    sub=client6    "hello from client9 (msg 4)"
+[05:03:12.582] MSG  topic=test         pub=client9    sub=client5    "hello from client9 (msg 4)"
+[05:03:12.784] MSG  topic=test         pub=client9    sub=client9    "hello from client9 (msg 5)"
+[05:03:12.784] MSG  topic=test         pub=client9    sub=client8    "hello from client9 (msg 5)"
+[05:03:12.784] MSG  topic=test         pub=client9    sub=client6    "hello from client9 (msg 5)"
+[05:03:12.784] MSG  topic=test         pub=client9    sub=client4    "hello from client9 (msg 5)"
+[05:03:12.784] MSG  topic=test         pub=client9    sub=client5    "hello from client9 (msg 5)"
+[05:03:12.784] MSG  topic=test         pub=client9    sub=client7    "hello from client9 (msg 5)"
